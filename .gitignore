@@ -1,0 +1,25 @@
+# Packer: cache de ISOs e VMs geradas
+packer_cache/
+output-*/
+*.iso
+*.ova
+*.ovf
+*.vmdk
+*.vdi
+*.box
+
+# Segredos (passwords de VMs, chaves)
+*.auto.pkrvars.hcl
+secrets/
+*.pem
+
+# Resultados gerados localmente
+reporting/output/
+scanning/results/
+
+# Python
+.venv/
+__pycache__/
+
+# Logs
+*.log
