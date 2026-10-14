@@ -102,4 +102,4 @@ For lab use. The code references CIS recommendation IDs but does not include ben
 
 ## Author
 
-Dany Nogueira. Cybersecurity analyst working on CIS hardening and compliance automation. GitHub: [DanyCNog](https://github.com/DanyCNog)
+Dany Nogueira - Cybersecurity analyst working on CIS hardening and compliance automation. GitHub: [DanyCNog](https://github.com/DanyCNog)
