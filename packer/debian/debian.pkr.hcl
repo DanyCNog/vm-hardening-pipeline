@@ -168,7 +168,7 @@ build {
       "tar -xzf baseline.tar.gz",
       "tar -xzf final.tar.gz",
       "mkdir -p ${local.repo_root}/reporting/output",
-      "python3 ${local.repo_root}/reporting/generate_report.py --baseline baseline --final final --out ${local.repo_root}/reporting/output/debian13-report.html --title 'Debian 13 hardening report'",
+      "python3 ${local.repo_root}/reporting/generate_report.py --baseline baseline --final final --out ${local.repo_root}/reporting/output/debian13-report.html --title 'Debian 13 hardening report' --profile-label 'CIS Debian 13 Level 1 Server'",
     ]
   }
 }

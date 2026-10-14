@@ -203,6 +203,7 @@ def main():
     parser.add_argument("--final", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--title", default="Hardening report")
+    parser.add_argument("--profile-label", default="CIS Level 1 Server")
     args = parser.parse_args()
 
     lynis_b = parse_lynis(args.baseline / "lynis-report.dat")
@@ -228,7 +229,7 @@ def main():
 <title>{esc(args.title)}</title><style>{CSS}</style></head>
 <body><main>
 <header><h1>{esc(args.title)}</h1>
-<p class="meta">Generated {generated} &middot; OpenSCAP profile: CIS Debian 13 Level 1 Server &middot; Lynis quick audit</p></header>
+<p class="meta">Generated {generated} &middot; OpenSCAP profile: {esc(args.profile_label)} &middot; Lynis quick audit</p></header>
 <section class="cards">{cards}</section>
 <section><h2>OpenSCAP rule results</h2>{bar_chart(tb, tf)}
 <p class="legend"><span class="swatch bar-before"></span>Before hardening<span class="swatch bar-after"></span>After hardening</p></section>

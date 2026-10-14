@@ -1,0 +1,2 @@
+# Copiar para lab.auto.pkrvars.hcl (ignorado pelo Git) e definir uma password forte
+ssh_password = "CHANGE_ME"

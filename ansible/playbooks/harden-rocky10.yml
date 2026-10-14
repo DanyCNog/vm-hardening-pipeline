@@ -1,0 +1,6 @@
+---
+- name: CIS RHEL 10 hardening on Rocky Linux 10 (Level 1 Server - subset)
+  hosts: rocky10
+  become: true
+  roles:
+    - cis_rhel10

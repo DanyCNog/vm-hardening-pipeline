@@ -1,0 +1,41 @@
+---
+- name: "1.5.x / 3.3.x | Aplicar parâmetros de kernel"
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: "{{ cis_sysctl_file }}"
+    state: present
+    reload: true
+  loop: "{{ cis_sysctl_settings }}"
+  loop_control:
+    label: "{{ item.cis }} {{ item.key }}={{ item.value }}"
+
+- name: "1.5.1 | Impedir core dumps de utilizadores"
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/60-cis-coredump.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # CIS 1.5.1 - Gerido por Ansible
+      * hard core 0
+
+- name: "1.5.9 / 1.5.10 | Garantir pasta de configuração do systemd-coredump"
+  ansible.builtin.file:
+    path: /etc/systemd/coredump.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: "1.5.9 / 1.5.10 | systemd-coredump sem processamento nem armazenamento"
+  ansible.builtin.copy:
+    dest: /etc/systemd/coredump.conf.d/60-cis.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # CIS 1.5.9 / 1.5.10 - Gerido por Ansible
+      [Coredump]
+      ProcessSizeMax=0
+      Storage=none

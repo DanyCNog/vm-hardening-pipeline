@@ -1,0 +1,22 @@
+---
+- name: "1.1.1.x / 3.2.x | Impedir o carregamento de módulos de kernel desnecessários"
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/60-cis-disable-modules.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Gerido por Ansible (role cis_debian13) - não editar manualmente
+      {% for m in cis_disabled_modules %}
+      # CIS {{ m.cis }}
+      install {{ m.name }} /bin/false
+      blacklist {{ m.name }}
+      {% endfor %}
+
+- name: "1.1.1.x / 3.2.x | Descarregar os módulos se estiverem carregados"
+  community.general.modprobe:
+    name: "{{ item.name }}"
+    state: absent
+  loop: "{{ cis_disabled_modules }}"
+  loop_control:
+    label: "{{ item.cis }} {{ item.name }}"

@@ -1,0 +1,39 @@
+# Rocky Linux 10 kickstart - rendered by Packer at build time
+
+text
+lang en_US.UTF-8
+keyboard --vckeymap=pt --xlayouts='pt'
+timezone Europe/Lisbon --utc
+
+network --bootproto=dhcp --device=link --activate --onboot=on --hostname=${hostname}.lab.local
+
+# Root disabled; admin user in the wheel group (sudo)
+rootpw --lock
+user --name=${username} --groups=wheel --password=${password} --plaintext
+
+firewall --enabled --service=ssh
+selinux --enforcing
+services --enabled=sshd
+firstboot --disable
+skipx
+
+# Whole disk, LVM, no questions
+zerombr
+clearpart --all --initlabel
+autopart --type=lvm
+bootloader --timeout=1
+
+reboot --eject
+
+%packages
+@^minimal-environment
+sudo
+openssh-server
+tar
+%end
+
+# Passwordless sudo for the first automation run (removed by the role in phase 5B)
+%post
+echo '${username} ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/${username}
+chmod 0440 /etc/sudoers.d/${username}
+%end

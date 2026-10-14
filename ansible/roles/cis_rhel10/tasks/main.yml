@@ -1,0 +1,15 @@
+---
+- name: Bloco 1.1.1 / 3.2 - Módulos de kernel
+  ansible.builtin.import_tasks: kernel_modules.yml
+  when: cis_kernel_modules
+  tags: [kernel_modules, section1, section3]
+
+- name: Bloco 1.5 / 3.3 - Parâmetros de kernel e core dumps
+  ansible.builtin.import_tasks: sysctl.yml
+  when: cis_sysctl
+  tags: [sysctl, section1, section3]
+
+- name: Bloco 1.7 - Banners
+  ansible.builtin.import_tasks: banners.yml
+  when: cis_banners
+  tags: [banners, section1]
