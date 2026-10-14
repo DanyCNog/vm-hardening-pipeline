@@ -23,3 +23,8 @@ __pycache__/
 
 # Logs
 *.log
+
+# Conteúdo OpenSCAP compilado localmente (só a referência da versão vai para o Git)
+scanning/content/*
+!scanning/content/SOURCE_COMMIT
+build-*.log

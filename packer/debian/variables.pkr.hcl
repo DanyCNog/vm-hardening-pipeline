@@ -10,7 +10,7 @@ variable "iso_sha256" {
 
 variable "vm_name" {
   type    = string
-  default = "debian13-base"
+  default = "debian13-cis"
 }
 
 variable "cpus" {
