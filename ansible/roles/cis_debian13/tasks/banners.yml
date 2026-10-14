@@ -1,0 +1,14 @@
+---
+- name: "1.6.1-1.6.6 | Banners de aviso legal sem informação do sistema"
+  ansible.builtin.copy:
+    dest: "{{ item.path }}"
+    content: "{{ cis_banner_text }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { path: /etc/motd,      cis: "1.6.1/1.6.4" }
+    - { path: /etc/issue,     cis: "1.6.2/1.6.5" }
+    - { path: /etc/issue.net, cis: "1.6.3/1.6.6" }
+  loop_control:
+    label: "{{ item.cis }} {{ item.path }}"

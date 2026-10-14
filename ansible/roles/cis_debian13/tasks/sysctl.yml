@@ -1,0 +1,47 @@
+---
+- name: "1.5.x / 3.3.x | Aplicar parâmetros de kernel"
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: "{{ cis_sysctl_file }}"
+    state: present
+    reload: true
+  loop: "{{ cis_sysctl_settings }}"
+  loop_control:
+    label: "{{ item.cis }} {{ item.key }}={{ item.value }}"
+
+- name: "1.5.11 | Impedir core dumps de utilizadores"
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/60-cis-coredump.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # CIS 1.5.11 - Gerido por Ansible
+      * hard core 0
+
+- name: "3.3.1.16/17 | Serviço que reaplica sysctl depois da rede (particularidade Debian 13)"
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/cis-sysctl-reapply.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Re-apply CIS sysctl hardening after network is up
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/lib/systemd/systemd-sysctl
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: "3.3.1.16/17 | Ativar o serviço de reaplicação"
+  ansible.builtin.systemd_service:
+    name: cis-sysctl-reapply.service
+    enabled: true
+    daemon_reload: true
+  ignore_errors: "{{ ansible_check_mode }}"

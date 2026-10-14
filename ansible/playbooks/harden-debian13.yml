@@ -1,0 +1,6 @@
+---
+- name: CIS Debian 13 hardening (Level 1 Server - subset)
+  hosts: debian13
+  become: true
+  roles:
+    - cis_debian13
