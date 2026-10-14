@@ -1,4 +1,4 @@
-# vm-hardening-pipeline
+# Vm-Hardening-Pipeline
 
 Builds a Debian 13 virtual machine from the official ISO without manual steps and hardens it against the CIS Debian Linux 13 Benchmark v1.0.0 with Ansible. Every task in the hardening role is named after the CIS recommendation it implements, so each change can be traced back to the benchmark.
 
