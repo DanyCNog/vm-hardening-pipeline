@@ -26,14 +26,14 @@ ISO ──► Packer builds VM (unattended install)
 
 ## Target platforms
 
-- Debian 12
+- Debian 13
 - Rocky Linux 9 (RHEL-compatible)
 - Windows Server (Evaluation)
 
 ## Roadmap
 
 - [x] Project structure
-- [ ] Debian 12 unattended build
+- [x] Debian 13 unattended build
 - [ ] Debian CIS-based hardening
 - [ ] Before/after scan + HTML report
 - [ ] Rocky Linux
