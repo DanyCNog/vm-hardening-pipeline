@@ -34,7 +34,7 @@ ISO ──► Packer builds VM (unattended install)
 
 - [x] Project structure
 - [x] Debian 13 unattended build
-- [ ] Debian CIS-based hardening
+- [x] Debian CIS-based hardening
 - [ ] Before/after scan + HTML report
 - [ ] Rocky Linux
 - [ ] Windows Server

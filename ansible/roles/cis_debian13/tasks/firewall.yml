@@ -1,0 +1,36 @@
+---
+- name: "4.1.1 | Instalar UFW"
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: "4.1.x | Permitir SSH ANTES de ativar a firewall (anti-bloqueio)"
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    comment: "SSH - gestao"
+
+- name: "4.1.3 | Entrada: negar por omissão"
+  community.general.ufw:
+    direction: incoming
+    default: deny
+
+- name: "4.1.4 (exceção L2) | Saída: permitir por omissão"
+  community.general.ufw:
+    direction: outgoing
+    default: allow
+
+- name: "4.1.5 | Encaminhamento: negar por omissão"
+  community.general.ufw:
+    direction: routed
+    default: deny
+
+- name: "4.1.2 | Ativar UFW"
+  community.general.ufw:
+    state: enabled
+
+- name: "4.1.2 | Serviço UFW ativo no arranque"
+  ansible.builtin.systemd_service:
+    name: ufw
+    enabled: true

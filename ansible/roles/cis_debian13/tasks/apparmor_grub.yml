@@ -1,0 +1,31 @@
+---
+- name: "1.3.1.1 | Instalar AppArmor"
+  ansible.builtin.apt:
+    name: [apparmor, apparmor-utils]
+    state: present
+
+- name: "1.3.1.2 / 6.2.1.3 / 6.2.1.4 | Garantir pasta de configuração do GRUB"
+  ansible.builtin.file:
+    path: /etc/default/grub.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: "1.3.1.2 / 6.2.1.3 / 6.2.1.4 | Parâmetros de arranque: AppArmor e auditoria"
+  ansible.builtin.copy:
+    dest: /etc/default/grub.d/60-cis.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # CIS 1.3.1.2 / 6.2.1.3 / 6.2.1.4 - gerido por Ansible
+      GRUB_CMDLINE_LINUX="$GRUB_CMDLINE_LINUX apparmor=1 security=apparmor audit=1 audit_backlog_limit=8192"
+  notify: update grub
+
+- name: "1.4.2 | Permissões do grub.cfg"
+  ansible.builtin.file:
+    path: /boot/grub/grub.cfg
+    owner: root
+    group: root
+    mode: "0600"

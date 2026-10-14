@@ -1,0 +1,12 @@
+---
+- name: "6.3.1 | Instalar AIDE"
+  ansible.builtin.apt:
+    name: [aide, aide-common]
+    state: present
+
+- name: "6.3.1 | Criar a base de dados inicial (demora alguns minutos)"
+  ansible.builtin.command: aideinit -y -f
+  args:
+    creates: /var/lib/aide/aide.db
+  async: 2700
+  poll: 30

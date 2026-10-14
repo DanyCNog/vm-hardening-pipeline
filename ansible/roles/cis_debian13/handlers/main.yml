@@ -1,0 +1,22 @@
+---
+- name: Regenerar configuração do GRUB
+  ansible.builtin.command: update-grub
+  listen: update grub
+
+- name: Repor permissões do grub.cfg após regenerar (1.4.2)
+  ansible.builtin.file:
+    path: /boot/grub/grub.cfg
+    owner: root
+    group: root
+    mode: "0600"
+  listen: update grub
+
+- name: Carregar regras de auditoria
+  ansible.builtin.command: augenrules --load
+  listen: load audit rules
+
+- name: Recarregar SSH
+  ansible.builtin.systemd_service:
+    name: ssh
+    state: reloaded
+  listen: reload ssh

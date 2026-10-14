@@ -1,0 +1,104 @@
+---
+- name: "6.2.1.1 | Instalar auditd"
+  ansible.builtin.apt:
+    name: [auditd, audispd-plugins]
+    state: present
+
+- name: "6.2.1.2 | auditd ativo"
+  ansible.builtin.systemd_service:
+    name: auditd
+    enabled: true
+    state: started
+
+- name: "6.2.2.1 / 6.2.2.2 | Retenção dos logs de auditoria"
+  ansible.builtin.lineinfile:
+    path: /etc/audit/auditd.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^max_log_file\s*=',        line: 'max_log_file = 6',              cis: "6.2.2.1" }
+    - { regexp: '^max_log_file_action\s*=', line: 'max_log_file_action = keep_logs', cis: "6.2.2.2" }
+  loop_control:
+    label: "{{ item.cis }} {{ item.line }}"
+
+- name: "6.2.3.x | Regras de auditoria CIS"
+  ansible.builtin.copy:
+    dest: /etc/audit/rules.d/60-cis.rules
+    owner: root
+    group: root
+    mode: "0640"
+    content: |
+      ## CIS Debian 13 v1.0.0 - secção 6.2.3 - gerido por Ansible
+
+      ## 6.2.3.1 - Alterações ao sudoers
+      -w /etc/sudoers -p wa -k scope
+      -w /etc/sudoers.d -p wa -k scope
+
+      ## 6.2.3.2 - Ações executadas como outro utilizador
+      -a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation
+      -a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation
+
+      ## 6.2.3.3 - Alterações ao log do sudo
+      -w /var/log/sudo.log -p wa -k sudo_log_file
+
+      ## 6.2.3.4 - Alterações de data e hora
+      -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change
+      -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time-change
+      -w /etc/localtime -p wa -k time-change
+
+      ## 6.2.3.5 a 6.2.3.8 - Ambiente de rede
+      -a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale
+      -a always,exit -F arch=b32 -S sethostname,setdomainname -k system-locale
+      -w /etc/issue -p wa -k system-locale
+      -w /etc/issue.net -p wa -k system-locale
+      -w /etc/hosts -p wa -k system-locale
+      -w /etc/hostname -p wa -k system-locale
+      -w /etc/network -p wa -k system-locale
+
+      ## 6.2.3.11 - Tentativas de acesso a ficheiros falhadas
+      -a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
+      -a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
+      -a always,exit -F arch=b32 -S creat,open,openat,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
+      -a always,exit -F arch=b32 -S creat,open,openat,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
+
+      ## 6.2.3.12 a 6.2.3.17 - Identidades e autenticação
+      -w /etc/group -p wa -k identity
+      -w /etc/passwd -p wa -k identity
+      -w /etc/gshadow -p wa -k identity
+      -w /etc/shadow -p wa -k identity
+      -w /etc/security/opasswd -p wa -k identity
+      -w /etc/nsswitch.conf -p wa -k identity
+      -w /etc/pam.conf -p wa -k identity
+      -w /etc/pam.d -p wa -k identity
+
+      ## 6.2.3.18 a 6.2.3.20 - Alterações de permissões
+      -a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k perm_mod
+      -a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -k perm_mod
+      -a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -k perm_mod
+      -a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k perm_mod
+      -a always,exit -F arch=b32 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -k perm_mod
+      -a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -k perm_mod
+
+      ## 6.2.3.21 - Montagens de sistemas de ficheiros
+      -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=unset -k mounts
+      -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=unset -k mounts
+
+      ## 6.2.3.22 / 6.2.3.23 - Sessões e logins
+      -w /var/run/utmp -p wa -k session
+      -w /var/log/wtmp -p wa -k session
+      -w /var/log/btmp -p wa -k session
+      -w /var/log/lastlog -p wa -k logins
+      -w /var/run/faillock -p wa -k logins
+
+      ## 6.2.3.24 / 6.2.3.25 - Eliminação e renomeação de ficheiros
+      -a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat,renameat2 -F auid>=1000 -F auid!=unset -k delete
+      -a always,exit -F arch=b32 -S unlink,unlinkat,rename,renameat,renameat2 -F auid>=1000 -F auid!=unset -k delete
+
+      ## 6.2.3.26 - Controlo de acesso obrigatório (AppArmor)
+      -w /etc/apparmor/ -p wa -k MAC-policy
+      -w /etc/apparmor.d/ -p wa -k MAC-policy
+
+      ## 6.2.3.31 a 6.2.3.33 - Módulos de kernel
+      -a always,exit -F arch=b64 -S init_module,finit_module,delete_module -F auid>=1000 -F auid!=unset -k kernel_modules
+      -a always,exit -S all -F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset -k kernel_modules
+  notify: load audit rules

@@ -1,0 +1,104 @@
+---
+- name: "5.1.4 | Criar grupo de utilizadores autorizados a SSH"
+  ansible.builtin.group:
+    name: "{{ cis_ssh_group }}"
+    state: present
+
+- name: "5.1.4 | Adicionar utilizadores autorizados ao grupo (ANTES de restringir)"
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: "{{ cis_ssh_group }}"
+    append: true
+  loop: "{{ cis_ssh_allowed_users }}"
+
+- name: "5.1.4-5.1.23 | Configuração SSH endurecida"
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-cis-hardening.conf
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      # CIS Debian 13 v1.0.0 - secção 5.1 - gerido por Ansible
+      # 5.1.4
+      AllowGroups {{ cis_ssh_group }}
+      # 5.1.5
+      Banner /etc/issue.net
+      # 5.1.6
+      Ciphers {{ cis_ssh_ciphers }}
+      # 5.1.7
+      ClientAliveInterval 15
+      ClientAliveCountMax 3
+      # 5.1.8
+      DisableForwarding yes
+      # 5.1.9
+      GSSAPIAuthentication no
+      # 5.1.10
+      HostbasedAuthentication no
+      # 5.1.11
+      IgnoreRhosts yes
+      # 5.1.12 / 5.1.13 (pós-quântico)
+      KexAlgorithms {{ cis_ssh_kex }}
+      # 5.1.14
+      LoginGraceTime 60
+      # 5.1.15
+      LogLevel INFO
+      # 5.1.16
+      MACs {{ cis_ssh_macs }}
+      # 5.1.17
+      MaxAuthTries 4
+      # 5.1.18
+      MaxSessions 10
+      # 5.1.19
+      MaxStartups 10:30:60
+      # 5.1.20
+      PermitEmptyPasswords no
+      # 5.1.21
+      PermitRootLogin no
+      # 5.1.22
+      PermitUserEnvironment no
+      # 5.1.23
+      UsePAM yes
+  notify: reload ssh
+
+- name: "5.1.1 | Permissões do sshd_config"
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: "5.1.2 | Localizar chaves privadas do servidor"
+  ansible.builtin.find:
+    paths: /etc/ssh
+    patterns: "ssh_host_*_key"
+  register: ssh_private_keys
+
+- name: "5.1.2 | Permissões das chaves privadas"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ ssh_private_keys.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: "5.1.3 | Localizar chaves públicas do servidor"
+  ansible.builtin.find:
+    paths: /etc/ssh
+    patterns: "ssh_host_*_key.pub"
+  register: ssh_public_keys
+
+- name: "5.1.3 | Permissões das chaves públicas"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ ssh_public_keys.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: "Validar a configuração SSH completa ANTES de recarregar (anti-bloqueio)"
+  ansible.builtin.command: /usr/sbin/sshd -t
+  changed_when: false
