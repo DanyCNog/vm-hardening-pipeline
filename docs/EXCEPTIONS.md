@@ -35,3 +35,12 @@ Settings are applied with HardeningKitty from a tailored copy of the CIS finding
 | Apply UAC restrictions to local accounts on network logons | Exception | Same reason. Without `LocalAccountTokenFilterPolicy = 1`, a local administrator gets a filtered token over WinRM and cannot manage the machine. |
 | Allow remote server management through WinRM / Allow Remote Shell Access (Level 2) | Not applied | Would close the channel Packer uses. Listed so they are never applied by accident if the list includes them. |
 | WinRM transport | By design | HTTPS with a self-signed certificate and NTLM. Basic authentication and unencrypted traffic are disabled, as CIS requires. |
+
+### Windows Server 2025: remaining checks after hardening
+
+| Group | Count | Explanation |
+|---|---|---|
+| Domain Controller only checks | 12 | The HardeningKitty list includes items marked (DC). They do not apply to a member server. |
+| User rights assignments | 13 | Not changed by HailMary in this run, including the documented exception for network logon. Open work. |
+| Site specific values | 4 | Renaming the Administrator and Guest accounts and the logon message text and title need values chosen by the organisation. |
+| Credential Guard, force logoff | 2 | Credential Guard needs virtualization based security in the VM. Open work. |
