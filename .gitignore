@@ -24,3 +24,4 @@ secrets/
 *.vdi
 .venv/
 *.vmdk
+windows-hardening/build/

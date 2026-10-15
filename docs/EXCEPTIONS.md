@@ -24,3 +24,14 @@
 | Rocky 10 | 1.2.1.1 | Red Hat GPG key | Rocky packages are signed with Rocky keys. The RHEL content looks for the Red Hat key. |
 | Rocky 10 | 5.4.2.4 | root password | root is locked by design (`rootpw --lock` in the kickstart). |
 | Rocky 10 | 6.3.x | auditd rules | Level 2 in the RHEL 10 benchmark. auditd is active by default; the rule set is planned. |
+
+## Windows Server 2025
+
+Settings are applied with HardeningKitty from a tailored copy of the CIS finding list. The audit always uses the official list, so the items below still show as failed in the report. The list of exceptions lives in `windows-hardening/exceptions.txt`.
+
+| Setting | Status | Explanation |
+|---|---|---|
+| Deny access to this computer from the network (local accounts in Administrators) | Exception | The lab has no domain. Packer manages the VM over WinRM with a local administrator account, which this setting blocks. In a domain, management uses domain accounts and the setting applies. |
+| Apply UAC restrictions to local accounts on network logons | Exception | Same reason. Without `LocalAccountTokenFilterPolicy = 1`, a local administrator gets a filtered token over WinRM and cannot manage the machine. |
+| Allow remote server management through WinRM / Allow Remote Shell Access (Level 2) | Not applied | Would close the channel Packer uses. Listed so they are never applied by accident if the list includes them. |
+| WinRM transport | By design | HTTPS with a self-signed certificate and NTLM. Basic authentication and unencrypted traffic are disabled, as CIS requires. |

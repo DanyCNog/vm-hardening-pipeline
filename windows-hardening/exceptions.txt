@@ -1,0 +1,8 @@
+# Findings whose Name contains one of these lines are NOT applied by HailMary.
+# They are still audited, so they show up as failed in the final report.
+# Reason for all four: the lab has no domain. Packer manages the VM over WinRM
+# with a local administrator account, which these settings block by design.
+Deny access to this computer from the network
+Apply UAC restrictions to local accounts on network logons
+Allow remote server management through WinRM
+Allow Remote Shell Access

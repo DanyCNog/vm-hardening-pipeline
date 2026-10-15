@@ -11,6 +11,8 @@ locals {
   repo_root   = abspath("${path.root}/../..")
   results_dir = "${local.repo_root}/scanning/results/ws2025"
   hk_zip      = pathexpand("~/build/HardeningKitty.zip")
+  hk_list     = pathexpand("~/build/HardeningKitty/lists/finding_list_cis_microsoft_windows_server_2025_24h2_1.0.0_machine.csv")
+  tailored    = "${local.repo_root}/windows-hardening/build/cis_ws2025_tailored.csv"
 }
 
 source "virtualbox-iso" "ws2025" {
@@ -66,6 +68,14 @@ build {
   name    = "ws2025-cis"
   sources = ["source.virtualbox-iso.ws2025"]
 
+  # 0. Tailored list on the host (official list minus documented exceptions)
+  provisioner "shell-local" {
+    inline = [
+      "mkdir -p ${local.results_dir}",
+      "python3 ${local.repo_root}/windows-hardening/tailor_list.py --in ${local.hk_list} --exceptions ${local.repo_root}/windows-hardening/exceptions.txt --out ${local.tailored}",
+    ]
+  }
+
   # 1. Smoke test of the fresh install
   provisioner "powershell" {
     inline = [
@@ -76,7 +86,7 @@ build {
     ]
   }
 
-  # 2. HardeningKitty and the scan script
+  # 2. Tools: HardeningKitty, scan and hardening scripts, tailored list
   provisioner "file" {
     source      = local.hk_zip
     destination = "C:/Tools/HardeningKitty.zip"
@@ -87,6 +97,17 @@ build {
     destination = "C:/Tools/scan.ps1"
   }
 
+  provisioner "file" {
+    source      = "${local.repo_root}/windows-hardening/harden.ps1"
+    destination = "C:/Tools/harden.ps1"
+  }
+
+  provisioner "file" {
+    source      = local.tailored
+    destination = "C:/Tools/cis_ws2025_tailored.csv"
+    generated   = true
+  }
+
   provisioner "powershell" {
     inline = [
       "Expand-Archive -Path C:\\Tools\\HardeningKitty.zip -DestinationPath C:\\Tools -Force",
@@ -95,11 +116,7 @@ build {
     ]
   }
 
-  provisioner "shell-local" {
-    inline = ["mkdir -p ${local.results_dir}"]
-  }
-
-  # 3. Baseline scan
+  # 3. Baseline scan (official CIS list)
   provisioner "powershell" {
     inline = ["& C:\\Tools\\scan.ps1 -Phase baseline"]
   }
@@ -110,14 +127,47 @@ build {
     destination = "${local.results_dir}/baseline.zip"
   }
 
-  # Phase 6B adds: hardening, reboot, final scan, report
+  # 4. Hardening (tailored list), with a backup for rollback
+  provisioner "powershell" {
+    inline = ["& C:\\Tools\\harden.ps1"]
+  }
 
+  provisioner "file" {
+    direction   = "download"
+    source      = "C:/scan/backup-before-hardening.csv"
+    destination = "${local.results_dir}/backup-before-hardening.csv"
+  }
+
+  # 5. Reboot, so the final scan measures the persisted state
+  provisioner "windows-restart" {
+    restart_timeout = "30m"
+  }
+
+  # 6. Final scan (official CIS list: exceptions are still measured)
+  provisioner "powershell" {
+    inline = ["& C:\\Tools\\scan.ps1 -Phase final"]
+  }
+
+  provisioner "file" {
+    direction   = "download"
+    source      = "C:/scan/final.zip"
+    destination = "${local.results_dir}/final.zip"
+  }
+
+  # 7. Remove tools and scan artefacts from the image
+  provisioner "powershell" {
+    inline = ["Remove-Item C:\\Tools, C:\\scan -Recurse -Force"]
+  }
+
+  # 8. Report on the host
   post-processor "shell-local" {
     inline = [
       "cd ${local.results_dir}",
-      "rm -rf baseline",
+      "rm -rf baseline final",
       "unzip -oq baseline.zip",
-      "ls -l baseline",
+      "unzip -oq final.zip",
+      "mkdir -p ${local.repo_root}/reporting/output",
+      "python3 ${local.repo_root}/reporting/generate_windows_report.py --baseline baseline/hk-report.csv --final final/hk-report.csv --out ${local.repo_root}/reporting/output/ws2025-report.html --title 'Windows Server 2025 hardening report' --profile-label 'CIS Windows Server 2025 v1.0.0 (HardeningKitty machine list)'",
     ]
   }
 }
