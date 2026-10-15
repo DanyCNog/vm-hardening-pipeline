@@ -154,13 +154,6 @@ build {
 
   # 8. Build the before/after report on the host
   post-processor "shell-local" {
-    inline = [
-      "cd ${local.results_dir}",
-      "rm -rf baseline final",
-      "tar -xzf baseline.tar.gz",
-      "tar -xzf final.tar.gz",
-      "mkdir -p ${local.repo_root}/reporting/output",
-      "python3 ${local.repo_root}/reporting/generate_report.py --baseline baseline --final final --out ${local.repo_root}/reporting/output/rocky10-report.html --title 'Rocky Linux 10 hardening report' --profile-label 'CIS RHEL 10 Level 1 Server'",
-    ]
+    inline = ["${local.repo_root}/reporting/make_report.sh rocky"]
   }
 }

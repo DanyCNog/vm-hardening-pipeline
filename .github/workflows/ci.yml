@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python tools and unit tests
+        run: |
+          python -m py_compile reporting/*.py windows-hardening/*.py
+          python -m unittest discover -s tests -v
+
+      - name: Shell scripts
+        run: shellcheck -S warning scanning/linux/scan.sh reporting/make_report.sh
+
+      - uses: hashicorp/setup-packer@v3
+        with:
+          version: "1.16.1"
+
+      - name: Packer templates
+        run: |
+          for d in packer/debian packer/rocky packer/windows; do
+            packer fmt -check "$d"
+            packer validate -syntax-only "$d"
+          done
+
+      - name: Ansible
+        run: |
+          pip install ansible-core ansible-lint
+          ansible-galaxy collection install -r ansible/requirements.yml
+          cd ansible
+          for p in playbooks/*.yml; do ansible-playbook "$p" --syntax-check; done
+          ansible-lint --profile min
+
+      - name: PowerShell
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $errors = @()
+          foreach ($p in 'scanning/windows', 'windows-hardening', 'packer/windows/scripts') {
+            $errors += Invoke-ScriptAnalyzer -Path $p -Recurse -Severity Error
+          }
+          $errors | Format-Table -AutoSize
+          if ($errors.Count -gt 0) { exit 1 }

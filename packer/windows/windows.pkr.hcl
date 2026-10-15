@@ -161,13 +161,6 @@ build {
 
   # 8. Report on the host
   post-processor "shell-local" {
-    inline = [
-      "cd ${local.results_dir}",
-      "rm -rf baseline final",
-      "unzip -oq baseline.zip",
-      "unzip -oq final.zip",
-      "mkdir -p ${local.repo_root}/reporting/output",
-      "python3 ${local.repo_root}/reporting/generate_windows_report.py --baseline baseline/hk-report.csv --final final/hk-report.csv --out ${local.repo_root}/reporting/output/ws2025-report.html --title 'Windows Server 2025 hardening report' --profile-label 'CIS Windows Server 2025 v1.0.0 (HardeningKitty machine list)'",
-    ]
+    inline = ["${local.repo_root}/reporting/make_report.sh windows"]
   }
 }

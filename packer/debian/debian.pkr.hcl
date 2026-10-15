@@ -162,13 +162,6 @@ build {
 
   # 8. Build the before/after report on the host
   post-processor "shell-local" {
-    inline = [
-      "cd ${local.results_dir}",
-      "rm -rf baseline final",
-      "tar -xzf baseline.tar.gz",
-      "tar -xzf final.tar.gz",
-      "mkdir -p ${local.repo_root}/reporting/output",
-      "python3 ${local.repo_root}/reporting/generate_report.py --baseline baseline --final final --out ${local.repo_root}/reporting/output/debian13-report.html --title 'Debian 13 hardening report' --profile-label 'CIS Debian 13 Level 1 Server'",
-    ]
+    inline = ["${local.repo_root}/reporting/make_report.sh debian"]
   }
 }
