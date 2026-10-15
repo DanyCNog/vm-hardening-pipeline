@@ -1,99 +1,97 @@
-# Vm-Hardening-Pipeline
+# vm-hardening-pipeline
 
-Builds a Debian 13 virtual machine from the official ISO without manual steps and hardens it against the CIS Debian Linux 13 Benchmark v1.0.0 with Ansible. Every task in the hardening role is named after the CIS recommendation it implements, so each change can be traced back to the benchmark.
+Builds Debian 13 and Rocky Linux 10 virtual machines from the official ISOs without manual steps, hardens them with Ansible against the matching CIS benchmark, and scans each machine before and after hardening. Each task in the Ansible roles is named after the CIS recommendation it implements.
 
-Status: the unattended build and the hardening role work. Lynis and OpenSCAP scans before and after hardening are in progress. Rocky Linux and Windows Server come later.
+Status: Debian 13 and Rocky Linux 10 work end to end. Windows Server 2025 is in progress.
 
-## How the build works
+## Results
 
-Packer downloads the Debian 13 netinst ISO and checks it against a SHA-256 hash pinned in `packer/debian/variables.pkr.hcl`. It then creates a VirtualBox VM, types the boot command and serves a preseed file from a temporary HTTP server on the host. The Debian installer reads its answers from that file and finishes without input. When the VM comes back up, Packer logs in over SSH, runs a short smoke test and shuts it down.
+From the last full pipeline run. The final scan runs after a reboot, so it measures what persists.
 
-The preseed file is a template. Packer fills in the user name and password at build time from `lab.auto.pkrvars.hcl`, which Git ignores, so the password is never committed.
+| | Debian 13 | Rocky Linux 10 |
+|---|---|---|
+| Benchmark | CIS Debian Linux 13 v1.0.0 | CIS Red Hat Enterprise Linux 10 v1.0.1 |
+| OpenSCAP profile | Level 1 Server | Level 1 Server |
+| Rules passed | 248 → 350 | 171 → 283 |
+| Rules failed | 125 → 41 | 121 → 10 |
+| Pass rate | 66.5% → 89.5% | 58.6% → 96.6% |
+| OpenSCAP score | 67.6 → 87.4 | 73.7 → 94.2 |
+| Lynis hardening index | 64 → 76 | 70 → 76 |
 
-The Ansible role `cis_debian13` then applies the hardening. During development it runs against a snapshot of the built VM, which makes changes quick to test and easy to roll back.
+Many of the remaining failures are listed in [docs/EXCEPTIONS.md](docs/EXCEPTIONS.md) with a reason, for example the bootloader password, a separate /tmp partition and remote log upload. The others are open work.
 
-## Benchmark coverage
+![Debian 13 report](docs/img/report-debian13.png)
+![Rocky Linux 10 report](docs/img/report-rocky10.png)
 
-The role covers Level 1 Server recommendations and a few Level 2 items, mostly the auditd controls in section 6.2.
+## How it works
 
-| Area | CIS recommendations |
-|---|---|
-| Unused filesystem and network protocol kernel modules | 1.1.1.1 to 1.1.1.5, 1.1.1.9, 1.1.1.10, 3.2.1 to 3.2.6 |
-| AppArmor enabled at boot, bootloader config permissions | 1.3.1.1, 1.3.1.2, 1.4.2 |
-| Kernel and process hardening (sysctl, core dumps) | 1.5.1 to 1.5.5, 1.5.8 to 1.5.11 |
-| Login banners without OS details | 1.6.1 to 1.6.6 |
-| Network services and insecure clients removed | 2.1.1 to 2.1.20, 2.2.1 to 2.2.6 |
-| cron access and permissions | 2.4.1.1 to 2.4.1.9 |
-| IPv4 and IPv6 network parameters | 3.3.1.1 to 3.3.1.18, 3.3.2.1 to 3.3.2.8 |
-| UFW firewall, inbound denied by default | 4.1.1 to 4.1.3, 4.1.5 |
-| SSH server configuration | 5.1.1 to 5.1.23 |
-| sudo and su | 5.2.2 to 5.2.7 |
-| Password quality, lockout, aging, shell timeout, umask | 5.3.1.3, 5.3.2.2, 5.3.2.3, 5.3.3.1.1, 5.3.3.1.2, 5.3.3.2.1 to 5.3.3.2.8, 5.4.1.1 to 5.4.1.5, 5.4.3.2, 5.4.3.3 |
-| auditd, log retention and audit rules | 6.2.1.1 to 6.2.1.4, 6.2.2.1, 6.2.2.2, selected 6.2.3.x |
-| AIDE file integrity database | 6.3.1 |
+~~~
+ISO ─► Packer: unattended install (preseed / kickstart)
+        ├─ baseline scan: OpenSCAP + Lynis
+        ├─ Ansible role (cis_debian13 / cis_rhel10)
+        ├─ reboot
+        ├─ final scan
+        └─ HTML report: before vs after
+~~~
 
-Recommendations that are not applied are listed in [docs/EXCEPTIONS.md](docs/EXCEPTIONS.md), each with a reason. Two examples are the bootloader password and halting the system when audit storage fills up.
+Packer checks the ISO against a pinned SHA-256 hash, creates a VirtualBox VM and serves the answer file to the installer. The answer files are templates: Packer fills in the user name and password at build time from `lab.auto.pkrvars.hcl`, which Git ignores. After the install, the same `packer build` runs the scans, the Ansible role and the reboot, downloads the results and generates the report on the host.
 
-## Notes from building it
+The Debian scan uses the CIS profile built from ComplianceAsCode. Rocky Linux uses the `scap-security-guide` package that ships with the distribution. One scan script handles both and picks the datastream and profile on its own.
 
-- SSH key exchange prefers `mlkem768x25519-sha256`, the hybrid post-quantum algorithm in OpenSSH 10 (CIS 5.1.13). Clients without it fall back to `curve25519-sha256`.
-- On Debian 13 the kernel resets some network sysctl values when an interface comes up. The role adds a oneshot systemd service that re-applies `/etc/sysctl.d` once the network is online, so 3.3.1.16 and 3.3.1.17 still hold after a reboot.
-- The installer gives the admin user passwordless sudo because Ansible needs it on the first run. The role removes it (5.2.4), but first checks that the user is still in the `sudo` group. If the check fails, the play stops instead of leaving the system without an administrator.
-- A second run of the playbook reports `changed=0`.
-- VirtualBox on a host with Linux 6.12 or newer can fail with `VERR_VMX_IN_VMX_ROOT_MODE`, because KVM now enables the CPU virtualization extensions as soon as its module loads. Adding `options kvm enable_virt_at_load=0` to a file in `/etc/modprobe.d` fixes it without unloading KVM.
+## What the scans showed
+
+- ComplianceAsCode's Debian content only reads `/etc/ssh/sshd_config`, not the drop-in files in `sshd_config.d`. The first report had 18 SSH rules failing on a server that already refused root logins. The role now writes a managed block at the top of `sshd_config`, which is also where sshd takes the first value from.
+- The kernel module checks look for `firewire-core` and `usb-storage` with a hyphen. modprobe accepts the underscore spelling, the checks do not.
+- Debian ships `* hard core infinity` in `/etc/security/limits.d/10-coredump-debian.conf`. The role comments that line out, because the scanner fails if any file sets a value other than 0.
+- On Debian 13 the kernel resets some network sysctl values when an interface comes up. A oneshot unit re-applies `/etc/sysctl.d` once the network is online. Rocky Linux 10 passed the same checks without it.
+- On Rocky the SSH ciphers, MACs and key exchange come from the system crypto policy. The role sets `DEFAULT:NO-SSHCBC:NO-SSHWEAKCIPHERS:NO-SSHWEAKMACS:NO-WEAKMAC` instead of listing algorithms in `sshd_config`.
+- PAM on Rocky runs from a custom authselect profile with `with-faillock`, `with-pwhistory` and `without-nullok`. Nothing in `/etc/pam.d` is edited by hand.
+
+## Other details
+
+- The Debian SSH server prefers `mlkem768x25519-sha256`, the hybrid post-quantum key exchange in OpenSSH 10 (CIS 5.1.13).
+- The installers give the admin user passwordless sudo for the first Ansible run. The roles remove it, but only after checking that the user is still in the `sudo` (Debian) or `wheel` (Rocky) group. If the check fails, the play stops.
+- A second run of either playbook reports `changed=0`.
+- VirtualBox on a host with Linux 6.12 or newer can fail with `VERR_VMX_IN_VMX_ROOT_MODE`, because KVM claims the CPU virtualization extensions when its module loads. `options kvm enable_virt_at_load=0` in `/etc/modprobe.d` fixes it without unloading KVM.
 
 ## Requirements
 
 - Linux host with VirtualBox 7.x (developed on Kali Linux with VirtualBox 7.2)
-- Packer 1.16 or newer
+- Packer 1.16 or newer, with the `virtualbox` and `ansible` plugins (`packer init` installs them)
 - Ansible with the `ansible.posix` and `community.general` collections
+- For the Debian scan: the ComplianceAsCode datastream, built with `./build_product debian13 --datastream-only` and copied to `scanning/content/`
 
-The VM gets 2 vCPUs, 2 GB of RAM and a 20 GB dynamically allocated disk.
+Each Linux VM gets 2 vCPUs, 2 GB of RAM and a 20 GB dynamically allocated disk.
 
 ## Usage
 
-Build the base VM:
-
 ~~~bash
-cd packer/debian
+cd packer/rocky        # or packer/debian
 cp lab.auto.pkrvars.hcl.example lab.auto.pkrvars.hcl   # then set ssh_password
 packer init .
 packer build .
 ~~~
 
-Apply the hardening:
-
-~~~bash
-ssh-keygen -t ed25519 -f ~/.ssh/lab_ed25519 -C "vm-hardening-lab" -N ""
-VBoxManage modifyvm debian13-base --natpf1 "ssh-dev,tcp,127.0.0.1,2222,,22"
-VBoxManage startvm debian13-base --type headless
-ssh-copy-id -i ~/.ssh/lab_ed25519.pub -p 2222 labadmin@127.0.0.1
-
-cd ansible
-ansible-galaxy collection install -r requirements.yml
-ansible-playbook playbooks/harden-debian13.yml -K
-~~~
-
-The port forward only listens on 127.0.0.1. The `-K` flag asks for the sudo password, which Ansible needs once the role has removed passwordless sudo.
+The report is written to `reporting/output/`.
 
 ## Repository layout
 
 ~~~
-packer/debian/        Packer template, variables and preseed template
-ansible/              Inventory, playbook and the cis_debian13 role
-docs/EXCEPTIONS.md    Recommendations not applied, with reasons
-scanning/             Scan scripts (in progress)
-reporting/            Before/after report generator (in progress)
-windows-hardening/    Windows Server hardening (planned)
+packer/debian/          Packer template, variables, preseed template
+packer/rocky/           Packer template, variables, kickstart template
+ansible/roles/          cis_debian13 and cis_rhel10 roles
+scanning/linux/         Scan script (Lynis + OpenSCAP)
+reporting/              Before/after report generator
+docs/EXCEPTIONS.md      Recommendations not applied, with reasons
+windows-hardening/      Windows Server work (in progress)
 ~~~
 
 ## Roadmap
 
-- [x] Unattended Debian 13 build
-- [x] CIS hardening role for Debian 13
-- [ ] Lynis and OpenSCAP scans before and after hardening, with an HTML report
-- [ ] Rocky Linux (RHEL compatible)
-- [ ] Windows Server
+- [x] Unattended Debian 13 build and CIS role
+- [x] Unattended Rocky Linux 10 build and CIS role
+- [x] Before/after scans with an HTML report
+- [ ] Windows Server 2025 (Packer, HardeningKitty)
 - [ ] One command for the whole pipeline, plus CI checks
 
 ## Disclaimer
@@ -102,4 +100,4 @@ For lab use. The code references CIS recommendation IDs but does not include ben
 
 ## Author
 
-Dany Nogueira - Cybersecurity analyst working on CIS hardening and compliance automation. GitHub: [DanyCNog](https://github.com/DanyCNog)
+Dany Nogueira. Cybersecurity analyst working on CIS hardening and compliance automation. GitHub: [DanyCNog](https://github.com/DanyCNog)

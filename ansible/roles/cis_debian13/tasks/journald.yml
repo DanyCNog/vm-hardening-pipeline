@@ -9,6 +9,7 @@
     name: systemd-journal-remote.socket
     enabled: false
     state: stopped
+    masked: true
 
 - name: "journald | ForwardToSyslog, Storage e Compress"
   community.general.ini_file:
