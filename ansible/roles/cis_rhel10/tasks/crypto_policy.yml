@@ -1,0 +1,21 @@
+---
+- name: "1.6.1-1.6.4 | Módulos de política criptográfica do perfil CIS"
+  ansible.builtin.copy:
+    dest: "/etc/crypto-policies/policies/modules/{{ item.name }}.pmod"
+    content: "{{ item.line }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ cis_crypto_modules }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: "1.6.x | Ler a política ativa"
+  ansible.builtin.command: update-crypto-policies --show
+  register: cis_crypto_current
+  changed_when: false
+
+- name: "1.6.x | Aplicar {{ cis_crypto_policy_name }}"
+  ansible.builtin.command: update-crypto-policies --set {{ cis_crypto_policy_name }}
+  when: cis_crypto_current.stdout | trim != cis_crypto_policy_name
+  notify: reload sshd

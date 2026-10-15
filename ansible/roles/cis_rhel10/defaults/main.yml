@@ -15,8 +15,8 @@ cis_disabled_modules:
   - { name: hfs,           cis: "1.1.1.3" }
   - { name: hfsplus,       cis: "1.1.1.4" }
   - { name: jffs2,         cis: "1.1.1.5" }
-  - { name: firewire_core, cis: "1.1.1.9" }
-  - { name: usb_storage,   cis: "1.1.1.10" }
+  - { name: firewire-core, cis: "1.1.1.9" }
+  - { name: usb-storage,   cis: "1.1.1.10" }
   - { name: atm,           cis: "3.2.1" }
   - { name: can,           cis: "3.2.2" }
   - { name: dccp,          cis: "3.2.3" }
@@ -64,3 +64,75 @@ cis_sysctl_settings:
 # 1.7.x - Banners (secção 1.6 no Debian)
 cis_banner_text: |
   Authorized access only. All activity on this system may be monitored and reported.
+
+# ============================================================
+# Fase 5B
+# ============================================================
+cis_services: true
+cis_mounts: true
+cis_journald: true
+cis_selinux_grub: true
+cis_crypto_policy: true
+cis_firewall: true
+cis_ssh: true
+cis_passwords: true
+cis_sudo: true
+cis_aide: true
+
+# 6.2.1.4 - Um único sistema de logs (journald)
+cis_journald_disable_rsyslog: true
+
+# 1.3.1.7 / 1.3.1.8 / 2.1.x / 2.2.x - Pacotes a remover
+cis_remove_packages:
+  - mcstrans        # 1.3.1.7
+  - setroubleshoot  # 1.3.1.8
+  - autofs          # 2.1.1
+  - avahi           # 2.1.2
+  - kea             # 2.1.4
+  - bind            # 2.1.5
+  - dnsmasq         # 2.1.6
+  - vsftpd          # 2.1.7
+  - dovecot         # 2.1.8
+  - cyrus-imapd     # 2.1.8
+  - nfs-utils       # 2.1.9
+  - cups            # 2.1.10
+  - rpcbind         # 2.1.11
+  - rsync           # 2.1.12
+  - samba           # 2.1.13
+  - net-snmp        # 2.1.14
+  - telnet-server   # 2.1.15
+  - tftp-server     # 2.1.16
+  - squid           # 2.1.17
+  - httpd           # 2.1.18
+  - nginx           # 2.1.18
+  - ftp             # 2.2.1
+  - telnet          # 2.2.3
+  - tftp            # 2.2.4
+
+# 1.6.1-1.6.4 / 5.1.6 / 5.1.15 - Política criptográfica do sistema
+cis_crypto_policy_name: "DEFAULT:NO-SSHCBC:NO-SSHWEAKCIPHERS:NO-SSHWEAKMACS:NO-WEAKMAC"
+cis_crypto_modules:
+  - { name: NO-SSHCBC,         line: "cipher@SSH = -*-CBC" }
+  - { name: NO-SSHWEAKCIPHERS, line: "cipher@SSH = -3DES-CBC -AES-128-CBC -AES-192-CBC -AES-256-CBC" }
+  - { name: NO-SSHWEAKMACS,    line: "mac@SSH = -HMAC-MD5* -UMAC-64* -UMAC-128* -HMAC-SHA1*" }
+  - { name: NO-WEAKMAC,        line: "mac = -*-128*" }
+
+# 5.1.x - SSH
+cis_ssh_group: sshusers
+cis_ssh_allowed_users:
+  - "{{ ansible_user }}"
+
+# 5.2.x - sudo (no RHEL o grupo administrativo é wheel)
+cis_sudo_group: wheel
+cis_sudo_admin_user: "{{ ansible_user }}"
+
+# 5.3.x - PAM gerido por authselect
+cis_authselect_profile: cis
+cis_authselect_base: local
+cis_authselect_features:
+  - with-faillock
+  - with-pwhistory
+  - without-nullok
+cis_faillock_deny: 5
+cis_faillock_unlock_time: 900
+cis_pwhistory_remember: 24

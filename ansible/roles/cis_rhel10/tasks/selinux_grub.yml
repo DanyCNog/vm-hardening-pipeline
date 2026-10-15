@@ -1,0 +1,39 @@
+---
+- name: "1.3.1.1 | libselinux instalado"
+  ansible.builtin.dnf:
+    name: libselinux
+    state: present
+
+- name: "1.3.1.3 / 1.3.1.5 | SELinux enforcing com política targeted"
+  ansible.builtin.lineinfile:
+    path: /etc/selinux/config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^SELINUX=',     line: 'SELINUX=enforcing' }
+    - { regexp: '^SELINUXTYPE=', line: 'SELINUXTYPE=targeted' }
+
+- name: "1.3.1.2 | Ler argumentos de arranque dos kernels"
+  ansible.builtin.command: grubby --info=ALL
+  register: cis_grubby_info
+  changed_when: false
+
+- name: "1.3.1.2 | Garantir que o SELinux não é desativado no arranque"
+  ansible.builtin.command: grubby --update-kernel=ALL --remove-args="selinux enforcing"
+  when: cis_grubby_info.stdout is search('(selinux|enforcing)=0')
+
+- name: "1.4.2 | Localizar ficheiros de configuração do GRUB"
+  ansible.builtin.find:
+    paths: /boot/grub2
+    file_type: file
+  register: cis_grub_files
+
+- name: "1.4.2 | Permissões 0600 nos ficheiros do GRUB"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ cis_grub_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"

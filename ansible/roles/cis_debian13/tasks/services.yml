@@ -45,10 +45,23 @@
     dest: /etc/cron.allow
     content: "root\n"
     owner: root
-    group: crontab
+    group: root
     mode: "0640"
 
 - name: "2.4.1.9 | Remover cron.deny"
   ansible.builtin.file:
     path: /etc/cron.deny
+    state: absent
+
+- name: "2.4.2.1 | Só utilizadores autorizados podem usar at"
+  ansible.builtin.copy:
+    dest: /etc/at.allow
+    content: "root\n"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: "2.4.2.1 | Remover at.deny"
+  ansible.builtin.file:
+    path: /etc/at.deny
     state: absent

@@ -1,0 +1,8 @@
+---
+- name: "/dev/shm com nodev, nosuid e noexec (Debian 1.1.2.2.2-4 / RHEL 1.1.2.2.2-4)"
+  ansible.posix.mount:
+    path: /dev/shm
+    src: tmpfs
+    fstype: tmpfs
+    opts: defaults,nodev,nosuid,noexec
+    state: mounted

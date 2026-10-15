@@ -1,0 +1,64 @@
+---
+- name: "1.3.1.7 / 1.3.1.8 / 2.1.x / 2.2.x | Remover pacotes desnecessários"
+  ansible.builtin.dnf:
+    name: "{{ cis_remove_packages }}"
+    state: absent
+
+- name: "1.2.1.1 | Instalar sequoia-sq (verificação de chaves e assinaturas)"
+  ansible.builtin.dnf:
+    name: sequoia-sq
+    state: present
+
+- name: "2.4.1.1 | cronie instalado"
+  ansible.builtin.dnf:
+    name: cronie
+    state: present
+
+- name: "2.4.1.1 | crond ativo"
+  ansible.builtin.systemd_service:
+    name: crond
+    enabled: true
+    state: started
+
+- name: "2.4.1.2 | Permissões de /etc/crontab"
+  ansible.builtin.file:
+    path: /etc/crontab
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: "2.4.1.3-2.4.1.8 | Permissões das pastas cron"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - { path: /etc/cron.hourly,  cis: "2.4.1.3" }
+    - { path: /etc/cron.daily,   cis: "2.4.1.4" }
+    - { path: /etc/cron.weekly,  cis: "2.4.1.5" }
+    - { path: /etc/cron.monthly, cis: "2.4.1.6" }
+    - { path: /etc/cron.yearly,  cis: "2.4.1.7" }
+    - { path: /etc/cron.d,       cis: "2.4.1.8" }
+  loop_control:
+    label: "{{ item.cis }} {{ item.path }}"
+
+- name: "2.4.1.9 / 2.4.2.1 | Listas brancas de cron e at"
+  ansible.builtin.copy:
+    dest: "{{ item }}"
+    content: "root\n"
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - /etc/cron.allow
+    - /etc/at.allow
+
+- name: "2.4.1.9 / 2.4.2.1 | Remover cron.deny e at.deny"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/cron.deny
+    - /etc/at.deny

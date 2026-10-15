@@ -16,8 +16,8 @@ cis_disabled_modules:
   - { name: hfs,           cis: "1.1.1.3" }
   - { name: hfsplus,       cis: "1.1.1.4" }
   - { name: jffs2,         cis: "1.1.1.5" }
-  - { name: firewire_core, cis: "1.1.1.9" }
-  - { name: usb_storage,   cis: "1.1.1.10" }
+  - { name: firewire-core, cis: "1.1.1.9" }
+  - { name: usb-storage,   cis: "1.1.1.10" }
   - { name: atm,           cis: "3.2.1" }
   - { name: can,           cis: "3.2.2" }
   - { name: dccp,          cis: "3.2.3" }
@@ -105,6 +105,7 @@ cis_remove_packages:
   - apache2           # 2.1.19
   - nginx             # 2.1.19
   - xinetd            # 2.1.20
+  - bluez             # 3.1.3
   - nis               # 2.2.1
   - rsh-client        # 2.2.2
   - talk              # 2.2.3
@@ -118,9 +119,9 @@ cis_remove_packages:
 cis_ssh_group: sshusers
 cis_ssh_allowed_users:
   - "{{ ansible_user }}"
-cis_ssh_ciphers: "aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
+cis_ssh_ciphers: "aes128-ctr,aes192-ctr,aes256-ctr,chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com"
 cis_ssh_macs: "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
-cis_ssh_kex: "mlkem768x25519-sha256,sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512"
+cis_ssh_kex: "mlkem768x25519-sha256,sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256"
 
 # 5.2.x - Utilizador administrador (tem de pertencer ao grupo sudo)
 cis_sudo_admin_user: "{{ ansible_user }}"
@@ -128,3 +129,10 @@ cis_sudo_admin_user: "{{ ansible_user }}"
 # 5.3.3.1.x - Bloqueio após tentativas falhadas
 cis_faillock_deny: 4
 cis_faillock_unlock_time: 900
+
+# ============================================================
+# Fase 5B - correções a partir do relatório OpenSCAP
+# ============================================================
+cis_mounts: true
+cis_journald: true
+cis_journald_disable_rsyslog: false

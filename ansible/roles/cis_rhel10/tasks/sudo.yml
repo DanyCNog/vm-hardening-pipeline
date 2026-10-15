@@ -1,0 +1,51 @@
+---
+- name: "5.2.2 / 5.2.3 / 5.2.6 | Política sudo (validada com visudo antes de gravar)"
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/60-cis
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+    content: |
+      # CIS RHEL 10 v1.0.1 - gerido por Ansible
+      # 5.2.2
+      Defaults use_pty
+      # 5.2.3
+      Defaults logfile="/var/log/sudo.log"
+      # 5.2.6
+      Defaults timestamp_timeout=15
+
+- name: "5.2.7 | Grupo vazio para restringir o comando su"
+  ansible.builtin.group:
+    name: sugroup
+    state: present
+
+- name: "5.2.7 | Só o grupo sugroup pode usar su"
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/su
+    regexp: '^auth\s+required\s+pam_wheel\.so'
+    line: "auth            required        pam_wheel.so use_uid group=sugroup"
+    insertafter: '^auth\s+sufficient\s+pam_rootok\.so'
+
+- name: "5.2.4 | SALVAGUARDA: ler membros do grupo {{ cis_sudo_group }}"
+  ansible.builtin.getent:
+    database: group
+    key: "{{ cis_sudo_group }}"
+
+- name: "5.2.4 | SALVAGUARDA: confirmar que o admin pertence ao grupo {{ cis_sudo_group }}"
+  ansible.builtin.assert:
+    that:
+      - cis_sudo_admin_user in ansible_facts.getent_group[cis_sudo_group][2].split(',')
+    fail_msg: "ABORTADO: {{ cis_sudo_admin_user }} não está no grupo {{ cis_sudo_group }}. Remover o NOPASSWD deixaria o sistema sem administrador."
+    success_msg: "OK: {{ cis_sudo_admin_user }} pertence ao grupo {{ cis_sudo_group }}."
+
+- name: "5.2.4 | Remover sudo sem password (criado pelo kickstart)"
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/{{ cis_sudo_admin_user }}"
+    state: absent
+
+- name: "5.2.4 / 5.2.5 | VERIFICAÇÃO: nenhuma linha ativa com NOPASSWD ou !authenticate"
+  ansible.builtin.command: grep -rEn '^[^#]*(NOPASSWD|!authenticate)' /etc/sudoers /etc/sudoers.d
+  register: nopasswd_check
+  changed_when: false
+  failed_when: nopasswd_check.rc == 0

@@ -20,28 +20,64 @@
       # CIS 1.5.11 - Gerido por Ansible
       * hard core 0
 
+- name: "1.5.11 | Localizar outros ficheiros de limites"
+  ansible.builtin.find:
+    paths: /etc/security/limits.d
+    patterns: "*.conf"
+    excludes: "60-cis-coredump.conf"
+  register: cis_limits_files
+
+- name: "1.5.11 | Comentar valores de core dump diferentes de 0 (ex.: 10-coredump-debian.conf)"
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
+    regexp: '^(\s*\*\s+(hard|-)\s+core\s+(?!0\s*$)\S+.*)$'
+    replace: '# \1  # disabled by CIS 1.5.11'
+  loop: "{{ cis_limits_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: "1.5.12 / 1.5.13 | Garantir pasta de configuração do systemd-coredump"
+  ansible.builtin.file:
+    path: /etc/systemd/coredump.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: "1.5.12 / 1.5.13 | systemd-coredump sem processamento nem armazenamento"
+  ansible.builtin.copy:
+    dest: /etc/systemd/coredump.conf.d/60-cis.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # CIS 1.5.12 / 1.5.13 - Gerido por Ansible
+      [Coredump]
+      ProcessSizeMax=0
+      Storage=none
+
 - name: "3.3.1.16/17 | Serviço que reaplica sysctl depois da rede (particularidade Debian 13)"
   ansible.builtin.copy:
-    dest: /etc/systemd/system/cis-sysctl-reapply.service
+    dest: /etc/systemd/system/sysctl-reapply-network.service
     owner: root
     group: root
     mode: "0644"
     content: |
       [Unit]
-      Description=Re-apply CIS sysctl hardening after network is up
+      Description=Re-apply sysctl hardening after network interfaces come up
       After=network-online.target
       Wants=network-online.target
 
       [Service]
       Type=oneshot
-      ExecStart=/usr/lib/systemd/systemd-sysctl
+      ExecStart=/sbin/sysctl --system
+      RemainAfterExit=yes
 
       [Install]
       WantedBy=multi-user.target
 
 - name: "3.3.1.16/17 | Ativar o serviço de reaplicação"
   ansible.builtin.systemd_service:
-    name: cis-sysctl-reapply.service
+    name: sysctl-reapply-network.service
     enabled: true
     daemon_reload: true
-  ignore_errors: "{{ ansible_check_mode }}"

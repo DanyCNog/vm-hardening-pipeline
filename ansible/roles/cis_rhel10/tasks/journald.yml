@@ -1,0 +1,37 @@
+---
+- name: "journald | Instalar systemd-journal-remote"
+  ansible.builtin.package:
+    name: systemd-journal-remote
+    state: present
+
+- name: "journald | systemd-journal-remote não aceita logs remotos"
+  ansible.builtin.systemd_service:
+    name: systemd-journal-remote.socket
+    enabled: false
+    state: stopped
+
+- name: "journald | ForwardToSyslog, Storage e Compress"
+  community.general.ini_file:
+    path: /etc/systemd/journald.conf
+    section: Journal
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    no_extra_spaces: true
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { option: ForwardToSyslog, value: "no" }
+    - { option: Storage, value: persistent }
+    - { option: Compress, value: "yes" }
+  loop_control:
+    label: "{{ item.option }}={{ item.value }}"
+  notify: restart journald
+
+- name: "journald | Um único sistema de logs: desativar o rsyslog"
+  ansible.builtin.systemd_service:
+    name: rsyslog
+    enabled: false
+    state: stopped
+  when: cis_journald_disable_rsyslog
